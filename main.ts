@@ -191,6 +191,8 @@
         v0: number
         v1: number
         handler: ((v: number) => void) | null
+        spriteHandler: ((v: number, s: Sprite) => void) | null
+        spritehandle: boolean
         start: number
         ms: number
         mode: Mode
@@ -198,7 +200,7 @@
         tag: string | null
         progress: number
 
-        constructor(id: number) {
+        constructor(id: number, spriteHandler: boolean = false) {
             this.id = id
             this.type = "pos"
             this.sprite = null
@@ -207,6 +209,8 @@
             this.cx0 = this.cy0 = this.cx1 = this.cy1 = 0
             this.v0 = this.v1 = 0
             this.handler = null
+            this.spriteHandler = null
+            this.spritehandle = spriteHandler
             this.start = game.runtime()
             this.ms = 1
             this.mode = Mode.InOutQuad
@@ -239,12 +243,15 @@
                     scene.cameraShake(0, 0) // noop, just ensure scene exists
                     scene.centerCameraAt(Math.round(this.cx0 + (this.cx1 - this.cx0) * e), Math.round(this.cy0 + (this.cy1 - this.cy0) * e))
                     break
-                case "value":
-                    if (this.handler) {
-                        const val = this.v0 + (this.v1 - this.v0) * e
+                case "value": 
+                    const val = this.v0 + (this.v1 - this.v0) * e
+                    if (this.spritehandle) {
+                        if (this.sprite && this.spriteHandler) this.spriteHandler(val, this.sprite)
+                    } else if (this.handler) {
                         this.handler(val)
                     }
                     break
+                
             }
 
             if (t >= 1) {
@@ -259,6 +266,7 @@
 
     let jobs: Job[] = []
     let namedValueHandlers: { [name: string]: (v: number) => void } = {}
+    let namedSpriteValueHandlers: { [name: string]: (v: number, sprite: Sprite) => void } = {}
     let nextId = 1
     let runnerStarted = false
 
@@ -503,6 +511,18 @@
             namedValueHandlers[name] = handler;
         }
 
+        /**
+         * Register a named easing callback with a sprite (make an easing function)
+         */
+        //% blockId=easing_setupEaseFuncForSprite
+        //% block="setup easing function named $name with $sprite"
+        //% draggableParameters=reporter
+        //% group="Generic" weight=76
+        export function setupEaseFuncForSprite(name: string, handler: (value: number, sprite: Sprite) => void): void {
+            if (!name || !handler) return;
+            namedSpriteValueHandlers[name] = handler;
+        }
+
     /**
      * Launch a previously defined easing function (by name), easing value from v0 -> v1.
      * The registered handler is called each frame with (value).
@@ -511,7 +531,7 @@
     //% blockId=easing_launchEaseFunc
     //% block="launch easing function named %name from %v0 to %v1 over %ms (ms) using %mode"
     //% inlineInputMode=inline
-    //% group="Generic" weight=76
+    //% group="Generic" weight=75
     export function launchEaseFunc(name: string, v0: number, v1: number, ms: number, mode: Mode = Mode.InOutQuad): void {
         const h = namedValueHandlers[name]
         if (!h) {
@@ -526,6 +546,33 @@
         p.ms = Math.max(1, ms | 0)
         p.mode = mode
         p.handler = h
+        pushJob(p)
+    }
+
+    /**
+     * Launch a previously defined easing function (by name), easing value from v0 -> v1, containing an attached sprite.
+     * The registered handler is called each frame with (value).
+     * This block returns nothing.
+     */
+    //% blockId=easing_launchEaseFuncForSprite
+    //% block="launch easing function named %name for %sprite=variables_get(mySprite) from %v0 to %v1 over %ms (ms) using %mode"
+    //% inlineInputMode=inline
+    //% group="Generic" weight=74
+    export function launchEaseFuncForSprite(name: string, sprite: Sprite, v0: number, v1: number, ms: number, mode: Mode = Mode.InOutQuad): void {
+        const h = namedSpriteValueHandlers[name]
+        if (!h) {
+            return
+        }
+
+        const p = new Job(nextId++, true)
+        p.type = "value"
+        p.v0 = v0
+        p.v1 = v1
+        p.start = game.runtime()
+        p.ms = Math.max(1, ms | 0)
+        p.mode = mode
+        p.sprite = sprite
+        p.spriteHandler = h
         pushJob(p)
     }
 
@@ -645,6 +692,8 @@
             nj.mode = orig.mode
             nj.ms = orig.ms
             nj.handler = orig.handler
+            nj.spriteHandler = orig.spriteHandler
+            nj.spritehandle = orig.spritehandle
 
             switch (orig.type) {
                 case "pos":
