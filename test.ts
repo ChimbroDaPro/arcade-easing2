@@ -1,4 +1,4 @@
-let mySprite = sprites.create(img`
+/*let mySprite = sprites.create(img`
     . . . . . . . . . . . . . . . .
     . . . . . . . . . . . . . . . .
     . . . . . . . . . . . . . . . .
@@ -24,7 +24,7 @@ easing.setupEaseFunc("test", function(value: number) {
 easing.launchEaseFunc("test", 0, 0, 0, easing.Mode.Linear)
 easing.setupEaseFunc("", function(value: number) {
     
-})
-easing.blockEaseScaleBy(null, 0, 0, easing.Mode.Linear, 0)
+})*/
+//easing.blockEaseScaleBy(null, 0, 0, easing.Mode.Linear, 0)
 
-let hi = easing.easeScaleBy(null, 0, 0, easing.Mode.Linear, 0)
+//let hi = easing.easeScaleBy(null, 0, 0, easing.Mode.Linear, 0)
